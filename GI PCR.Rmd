@@ -1,0 +1,169 @@
+---
+title: "GIPCR"
+author: "MayarAl Mohajer"
+date: "3/2/2022"
+output:
+  pdf_document: default
+  word_document: default
+  html_document: default
+---
+
+
+Read Data 
+
+
+
+```{r }
+library("readxl")
+GIPCR <- read_excel("GIPCR.xlsx",skip=1)
+```
+
+Describe data 
+
+```{r}
+library(psych)
+describe(GIPCR)
+
+table(GIPCR$`Study Period`)
+table(GIPCR$`Stool Culture Ordered`)
+table(GIPCR$`Stool Culture Results`)
+table(GIPCR$`GI Panel Ordered`)
+table(GIPCR$`GI Panel Results`)
+table(GIPCR$`Abx of interest Ordered?`)
+table(GIPCR$`Patient Days Present`)
+table(GIPCR$`GI Panel Results`,GIPCR$`Study Period`)
+table(GIPCR$`Abx of interest Ordered?`,GIPCR$`Study Period`)
+
+
+```
+
+Changing Negative to No for stool culture ordered 
+Remove duplicate from Stool culture result 
+Changing NO GI Perfomred to No in GI Panel performed 
+Replace outpatient collect  in Patient Days Present with NA. Chanding it to numeric and obtaining summary
+
+```{r}
+
+GIPCR$`Stool Culture Ordered` <- gsub("Negative", "NO", GIPCR$`Stool Culture Ordered`)
+table(GIPCR$`Stool Culture Ordered`)
+GIPCR$`Stool Culture Results` <- gsub("No organism detected;  No organism detected", "No organism detected", GIPCR$`Stool Culture Results`)
+table(GIPCR$`Stool Culture Results`)
+GIPCR$`GI Panel Ordered` <- gsub("No GI Panel Performed", "NO", GIPCR$`GI Panel Ordered`)
+table(GIPCR$`GI Panel Ordered`)
+GIPCR$`Patient Days Present` <- gsub("outpatient collect", "NA", GIPCR$`Patient Days Present`)
+GIPCR$`Patient Days Present` <- as.numeric(GIPCR$`Patient Days Present`)
+summary(GIPCR$`Patient Days Present`)
+
+
+```
+
+
+Antibiotic use description 
+
+```{r}
+
+summary(GIPCR$DOT)
+summary(GIPCR$LOT)
+hist(GIPCR$DOT)
+hist(GIPCR$DOT,main ="Days of therapy",xlab="Days of therapy",breaks =30)
+hist(GIPCR$LOT,main ="Length of therapy",xlab="Length of therapy",breaks =30)
+
+```
+
+Data not normally distrbuted (mean different from median, right tail). 
+
+
+Create new varibales for DOT per Patient Days Present and DOT per Patient Days Present
+
+```{r}
+GIPCR$DOTperPDP <- round(GIPCR$DOT/GIPCR$`Patient Days Present`,2)
+GIPCR$LOTperPDP <- round(GIPCR$LOT/GIPCR$`Patient Days Present`,2)
+hist(GIPCR$LOTperPDP,main ="Length of Therapy Per Patient Days Present",xlab="Length of therapy per patient days present",breaks=30)
+hist(GIPCR$DOTperPDP,main ="Days of Therapy Per Patient Days Present",xlab="Days of therapy per patient days present",breaks=30)
+
+```
+
+
+Data per Study Period 
+
+```{r}
+
+table(GIPCR$`Stool Culture Ordered`,GIPCR$`Study Period`)
+table(GIPCR$`Stool Culture Results`,GIPCR$`Study Period`)
+table(GIPCR$`GI Panel Ordered`,GIPCR$`Study Period`)
+tapply(GIPCR$DOT, GIPCR$`Study Period`, mean, na.rm=T)
+wilcox.test(GIPCR$DOT~GIPCR$`Study Period`)
+
+```
+
+No difference in median DOT between the two groups 
+
+
+```{r}
+
+tapply(GIPCR$LOT, GIPCR$`Study Period`, mean, na.rm=T)
+wilcox.test(GIPCR$LOT~GIPCR$`Study Period`)
+
+```
+No difference in median LOT between the two groups 
+
+```{r}
+
+library(incidence)
+
+```
+
+Now compare the rate of DOT and LOT per PDP 
+
+```{r}
+tapply(GIPCR$DOTperPDP, GIPCR$`Study Period`, mean, na.rm=T)
+
+
+ library(incidence)
+library(epiR)
+events <- tapply(GIPCR$DOT, GIPCR$`Study Period`, sum,na.rm=T)
+events
+persontime <- tapply(GIPCR$`Patient Days Present`, GIPCR$`Study Period`, sum,na.rm=T)
+persontime
+tab_studyperiod <- cbind(events, persontime) 
+tab_studyperiod <- tab_studyperiod[c(2,1),]
+tab_studyperiod 
+epi.2by2(tab_studyperiod, method = "cohort.time")
+
+```
+Increase in DOT incidence rate after intrevention (adjusted per patient days)
+
+
+
+
+```{r}
+tapply(GIPCR$LOTperPDP, GIPCR$`Study Period`, mean, na.rm=T)
+events2 <- tapply(GIPCR$LOT, GIPCR$`Study Period`, sum,na.rm=T)
+events2
+tab_studyperiod2 <- cbind(events2, persontime) 
+tab_studyperiod2 <- tab_studyperiod2[c(2,1),]
+tab_studyperiod2
+epi.2by2(tab_studyperiod2, method = "cohort.time")
+
+```
+
+Increase in LOT incidence rate after intrevention (adjusted per patient days)
+
+```{r}
+library(ggplot2)
+p1 <- ggplot(GIPCR,aes(DOT)) + geom_histogram() +facet_wrap(~`Study Period`)
+p1
+ p2 <- ggplot(GIPCR,aes(LOT)) + geom_histogram() +facet_wrap(~`Study Period`)
+p2
+p3 <- ggplot(GIPCR,aes(DOTperPDP)) + geom_histogram() +facet_wrap(~`Study Period`)
+p3
+p4 <- ggplot(GIPCR,aes(LOTperPDP)) + geom_histogram() +facet_wrap(~`Study Period`)
+p4
+
+```
+
+
+ 
+ 
+ 
+
